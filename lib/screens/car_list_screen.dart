@@ -217,7 +217,8 @@ class _CarListScreenState extends State<CarListScreen> {
 
     return InkWell(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => CarDetailScreen(car: car)));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => CarDetailScreen(car: car, userModel: userModel!,)));
+        print(userModel);
       },
       child: Card(
         elevation: 5,

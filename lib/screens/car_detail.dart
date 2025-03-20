@@ -7,15 +7,41 @@ import '../blocs/rental_cubit.dart';
 import '../models/car.dart';
 import 'dart:io';
 
-class CarDetailScreen extends StatelessWidget {
+import '../models/user.dart';
+import '../services/user_service.dart';
+
+class CarDetailScreen extends StatefulWidget {
   final Car car;
+  final UserModel userModel;
 
-  const CarDetailScreen({Key? key, required this.car}) : super(key: key);
+  const CarDetailScreen({Key? key, required this.car, required this.userModel}) : super(key: key);
 
+  @override
+  State<CarDetailScreen> createState() => _CarDetailScreenState();
+}
+
+class _CarDetailScreenState extends State<CarDetailScreen> {
+
+  final userService = UserService();
+  late UserModel currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    currentUser = widget.userModel;
+  }
+
+  Future<void> _updateCurrentUser() async {
+    final updatedUser = await userService.getUserByUid(widget.userModel.uid);
+    setState(() {
+      currentUser = updatedUser!;
+      print(currentUser.driverLicenseImagePath);
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.decimalPattern('vi');
-    final formattedPrice = formatter.format(car.pricePerHour);
+    final formattedPrice = formatter.format(widget.car.pricePerHour);
 
     return Scaffold(
       body: CustomScrollView(
@@ -25,12 +51,12 @@ class CarDetailScreen extends StatelessWidget {
             expandedHeight: 250,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(car.model, style: const TextStyle(color: Colors.white)),
+              title: Text(widget.car.model, style: const TextStyle(color: Colors.white)),
               background: Stack(
                 fit: StackFit.expand,
                 children: [
                   Image.network(
-                    car.image,
+                    widget.car.image,
                     fit: BoxFit.cover,
                   ),
                   Container(
@@ -47,9 +73,9 @@ class CarDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildImageSlider(car.images),
+                  _buildImageSlider(widget.car.images),
                   const SizedBox(height: 20),
-                  _buildInfoSection(car, formattedPrice),
+                  _buildInfoSection(widget.car, formattedPrice),
                   const SizedBox(height: 30),
                   _buildRentButton(context),
                 ],
@@ -182,23 +208,26 @@ class CarDetailScreen extends StatelessWidget {
   Widget _buildRentButton(BuildContext context) {
     return Center(
       child: ElevatedButton(
-        onPressed: () {
-          if (car.status == "Cho thuê") {
+        onPressed: () async {
+          await _updateCurrentUser();
+          if (widget.car.status == "Cho thuê") {
             _showSnackBar(context, "Xe đã được cho thuê, vui lòng chọn xe khác!");
-          } else if (car.status == "Đang chờ duyệt") {
+          } else if (widget.car.status == "Đang chờ duyệt") {
             _showSnackBar(context, "Xe đang chờ duyệt, vui lòng đợi trong giây lát!");
-          } else if (car.status == "Bảo trì") {
+          } else if (widget.car.status == "Bảo trì") {
             _showSnackBar(context, "Xe đang bảo trì, vui lòng chọn xe khác!");
-          } else {
+          } else if((currentUser.driverLicenseImagePath.isEmpty || currentUser.idCardImagePath.isEmpty)){
+            _showSnackBar(context, "Hãy cập nhật đăng kí xe và căn cước công dân trước khi thuê xe");
+          }else {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => BlocProvider(
                   create: (_) => RentalCubit(),
                   child: RentCarScreen(
-                    price: car.pricePerHour,
-                    carId: car.id.toString(),
-                    carModel: car.model,
+                    price: widget.car.pricePerHour,
+                    carId: widget.car.id.toString(),
+                    carModel: widget.car.model,
                   ),
                 ),
               ),
